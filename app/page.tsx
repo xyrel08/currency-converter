@@ -9,6 +9,8 @@ export default function CurrencyConverter() {
   const [convertedAmount, setConvertedAmount] = useState<number | null>(null);
   const [currencies, setCurrencies] = useState<string[]>([]);
 
+{/* I got the api from https://www.exchangerate-api.com/*/}
+
   useEffect(() => {
     fetch("https://api.exchangerate-api.com/v4/latest/USD")
       .then((res) => res.json())
@@ -66,7 +68,7 @@ export default function CurrencyConverter() {
               ))}
             </select>
 
-            {/* Swap Button */}
+            
             <button
               onClick={swapCurrencies}
               className=" hover:bg-gray-400 text-black p-2 rounded-full transition"
@@ -93,7 +95,7 @@ export default function CurrencyConverter() {
             Convert
           </button>
 
-          {/* Hide result if convertedAmount is null */}
+          
           {convertedAmount !== null && (
             <p className="text-lg font-semibold text-gray-800">
               {amount} {fromCurrency} = <span className="text-blue-600">{convertedAmount} {toCurrency}</span>
