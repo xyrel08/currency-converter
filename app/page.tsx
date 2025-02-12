@@ -2,6 +2,36 @@
 
 import { useState, useEffect } from "react";
 
+const fetchExchangeRates = async (baseCurrency: string) => {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+  if (!API_URL || !API_KEY) {
+    console.error("Missing API_URL or API_KEY in environment variables.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/${API_KEY}/latest/${baseCurrency}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data || !data.conversion_rates) {
+      throw new Error("No exchange rates found");
+    }
+
+    console.log("Fetched Data:", data);
+    return data.conversion_rates;
+  } catch (error) {
+    console.error("Error fetching exchange rates:", error);
+    return null;
+  }
+};
+
+
 export default function CurrencyConverter() {
   const [amount, setAmount] = useState<number>(1);
   const [fromCurrency, setFromCurrency] = useState<string>("USD");
@@ -9,52 +39,50 @@ export default function CurrencyConverter() {
   const [convertedAmount, setConvertedAmount] = useState<number | null>(null);
   const [currencies, setCurrencies] = useState<string[]>([]);
 
-{/* I got the api from https://www.exchangerate-api.com/*/}
-
   useEffect(() => {
-    fetch("https://api.exchangerate-api.com/v4/latest/USD")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.rates) {
-          setCurrencies(Object.keys(data.rates));
-        }
-      })
-      .catch((error) => console.error("Error fetching currencies:", error));
+    const loadCurrencies = async () => {
+      const rates = await fetchExchangeRates("USD");
+      if (rates) {
+        setCurrencies(Object.keys(rates));
+      }
+    };
+    loadCurrencies();
   }, []);
 
   const convertCurrency = async () => {
-    try {
-      const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${fromCurrency}`);
-      const data = await response.json();
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
 
-      if (data.rates && data.rates[toCurrency]) {
-        setConvertedAmount(Number((amount * data.rates[toCurrency]).toFixed(2)));
-      } else {
-        console.error("Invalid currency conversion.");
-      }
-    } catch (error) {
-      console.error("Error converting currency:", error);
+    const rates = await fetchExchangeRates(fromCurrency);
+    if (rates && rates[toCurrency]) {
+      setConvertedAmount(Number((amount * rates[toCurrency]).toFixed(2)));
+    } else {
+      console.error("Invalid currency conversion.");
     }
   };
 
   const swapCurrencies = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
-    setConvertedAmount(null);
+    setAmount(1); // Reset amount to 1
+    setConvertedAmount(null); // Hide converted amount
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-400 to-white">
       <div className="p-6 max-w-md w-full bg-white rounded-2xl shadow-lg text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Currency Converter</h2>
-        
+
         <div className="space-y-4">
           <input
             type="number"
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => setAmount(Number(e.target.value) || 1)}
             className="border border-gray-300 p-2 rounded w-full text-center"
             placeholder="Enter amount"
+            min="1"
           />
 
           <div className="flex items-center space-x-4">
@@ -68,10 +96,9 @@ export default function CurrencyConverter() {
               ))}
             </select>
 
-            
             <button
               onClick={swapCurrencies}
-              className=" hover:bg-gray-400 text-black p-2 rounded-full transition"
+              className="hover:bg-gray-400 text-black p-2 rounded-full transition"
               title="Swap Currencies"
             >
               🔄
@@ -95,7 +122,6 @@ export default function CurrencyConverter() {
             Convert
           </button>
 
-          
           {convertedAmount !== null && (
             <p className="text-lg font-semibold text-gray-800">
               {amount} {fromCurrency} = <span className="text-blue-600">{convertedAmount} {toCurrency}</span>
